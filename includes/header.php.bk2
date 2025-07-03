@@ -1,0 +1,133 @@
+<?php
+// includes/header.php
+// This file assumes that session_start() has already been called
+// and config.php (which defines BASE_URL) has been included
+// in the main PHP script that calls this header.
+// Example usage in your main PHP files (e.g., index.php, course_register_exam.php):
+// include_once('config.php'); // This typically includes session_start()
+// include_once('includes/header.php');
+// include_once('function.php'); // Include helper functions if needed after header, but before content
+?>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Online Exam System</title>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css">
+    <style>
+        /* Custom CSS (You can expand this or integrate your theme) */
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f0f2f5;
+        }
+        .navbar {
+            background-color: #007bff; /* Primary blue */
+        }
+        .navbar-brand, .nav-link {
+            color: #ffffff !important;
+        }
+        .navbar-nav .nav-link.active {
+            font-weight: bold;
+        }
+        .pcoded-main-container {
+            padding-top: 20px; /* Space from navbar */
+            padding-bottom: 20px;
+        }
+        .card-shadow {
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+            border-radius: 8px;
+            overflow: hidden;
+            background-color: #fff;
+        }
+        .card-header {
+            background-color: #e9ecef;
+            border-bottom: 1px solid #dee2e6;
+            font-size: 1.1em;
+            padding: 1rem 1.25rem;
+        }
+        .table thead th {
+            background-color: #f8f9fa;
+        }
+        .alert {
+            margin-top: 15px;
+        }
+        /* Specific styles for exam page timer */
+        #exam-timer {
+            font-size: 1.5em;
+            font-weight: bold;
+        }
+        .question-nav-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(40px, 1fr)); /* Adjust column width as needed */
+            gap: 5px;
+            margin-top: 20px;
+        }
+        .question-nav-grid .btn {
+            padding: 5px 0;
+            font-size: 0.85em;
+            text-align: center;
+        }
+        .question-nav-grid .btn.btn-success { background-color: #28a745; border-color: #28a745; } /* Answered */
+        .question-nav-grid .btn.btn-warning { background-color: #ffc107; border-color: #ffc107; color: #343a40; } /* Current */
+        .question-nav-grid .btn.btn-secondary { background-color: #6c757d; border-color: #6c757d; } /* Unanswered */
+
+        .login-container {
+            max-width: 400px;
+            margin: 100px auto;
+            padding: 20px;
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-dark fixed-top">
+        <a class="navbar-brand" href="<?= BASE_URL ?>">Online Exam System</a>
+        <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+        <div class="collapse navbar-collapse" id="navbarNav">
+            <ul class="navbar-nav mr-auto">
+                <?php if (isset($_SESSION['userid'])): ?>
+                    <?php if ($_SESSION['usertype'] == 'Student'): ?>
+                        <li class="nav-item <?= (basename($_SERVER['PHP_SELF']) == 'course_register_exam.php') ? 'active' : ''; ?>">
+                            <a class="nav-link" href="<?= BASE_URL ?>course_register_exam.php">My Exams</a>
+                        </li>
+                    <?php elseif ($_SESSION['usertype'] == 'Admin'): ?>
+                        <li class="nav-item <?= (basename($_SERVER['PHP_SELF']) == 'admin_dashboard.php') ? 'active' : ''; ?>">
+                            <a class="nav-link" href="<?= BASE_URL ?>admin_dashboard.php">Dashboard</a>
+                        </li>
+                        <li class="nav-item <?= (basename($_SERVER['PHP_SELF']) == 'manage_exams.php') ? 'active' : ''; ?>">
+                            <a class="nav-link" href="<?= BASE_URL ?>manage_exams.php">Manage Exams</a>
+                        </li>
+                        <li class="nav-item <?= (basename($_SERVER['PHP_SELF']) == 'manage_questions.php') ? 'active' : ''; ?>">
+                            <a class="nav-link" href="<?= BASE_URL ?>manage_questions.php">Manage Questions</a>
+                        </li>
+                        <li class="nav-item <?= (basename($_SERVER['PHP_SELF']) == 'manage_students.php') ? 'active' : ''; ?>">
+                            <a class="nav-link" href="<?= BASE_URL ?>manage_students.php">Manage Students</a>
+                        </li>
+                    <?php endif; ?>
+                <?php endif; ?>
+            </ul>
+            <ul class="navbar-nav ml-auto">
+                <?php if (isset($_SESSION['userid'])): ?>
+                    <li class="nav-item">
+                        <span class="nav-link">Welcome, <?= htmlspecialchars($_SESSION['username']); ?> (<?= htmlspecialchars($_SESSION['usertype']); ?>)</span>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="<?= BASE_URL ?>logout.php">Logout</a>
+                    </li>
+                <?php else: ?>
+                    <li class="nav-item <?= (basename($_SERVER['PHP_SELF']) == 'index.php') ? 'active' : ''; ?>">
+                        <a class="nav-link" href="<?= BASE_URL ?>index.php">Login</a>
+                    </li>
+                <?php endif; ?>
+            </ul>
+        </div>
+    </nav>
+    <div class="pcoded-main-container">
+        <div class="pcoded-wrapper">
+            <div class="pcoded-content">
+                <div class="pcoded-inner-content">
+                    <div class="main-body">
+                        <div class="page-wrapper">
