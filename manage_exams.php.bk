@@ -1,0 +1,130 @@
+<?php
+include('config.php'); // This includes session_start()
+include('includes/header.php');
+include('function.php');
+
+checkUserRole('Admin'); // Restrict access to Admin only
+
+// Handle adding a new exam
+if (isset($_POST['add_exam'])) {
+    $c_id = mysqli_real_escape_string($connection_db, $_POST['c_id']);
+    $c_name = mysqli_real_escape_string($connection_db, $_POST['c_name']);
+    $c_category = mysqli_real_escape_string($connection_db, $_POST['c_category']);
+    $c_duration = (int)$_POST['c_duration'];
+    $c_inst_name = mysqli_real_escape_string($connection_db, $_POST['c_inst_name']);
+    $division_br = mysqli_real_escape_string($connection_db, $_POST['division_br']);
+    $passing_marks = (float)$_POST['passing_marks'];
+
+    //$insert_query = "INSERT INTO course (c_id, c_name, c_category, c_duration, c_inst_name, c_status, c_type, division_br, passing_marks) VALUES (?, ?, ?, ?, ?, 'active', 'exam', ?, ?)";
+    $insert_query = "INSERT INTO course (c_id, c_name, c_category, c_duration, c_inst_name, c_status, c_type, division_br, passing_marks) VALUES (?, ?, ?, ?, ?, 'active', 'exam', ?, ?)";
+    $stmt = mysqli_prepare($connection_db, $insert_query);
+    //mysqli_stmt_bind_param($stmt, "sssisssd", $c_id, $c_name, $c_category, $c_duration, $c_inst_name, $division_br, $passing_marks);
+      mysqli_stmt_bind_param($stmt, "sssisds", $c_id, $c_name, $c_category, $c_duration, $c_inst_name, $division_br, $passing_marks);
+    if (mysqli_stmt_execute($stmt)) {
+        $_SESSION['success'] = "Exam '" . htmlspecialchars($c_name) . "' added successfully!";
+    } else {
+        $_SESSION['status'] = "Error adding exam: " . mysqli_error($connection_db);
+    }
+    redirect(BASE_URL . 'manage_exams.php');
+}
+
+// Fetch all exams
+$exams_query = "SELECT * FROM course WHERE c_type = 'exam' ORDER BY c_name ASC";
+$exams_result = mysqli_query($connection_db, $exams_query);
+?>
+
+<div class="card-shadow mb-4">
+    <div class="card-header py-3">
+        <h6 class="m-0 font-weight-bold text-primary">Manage Exams</h6>
+    </div>
+    <div class="card-body">
+        <?php
+        if (isset($_SESSION['success']) && $_SESSION['success'] != '') {
+            echo '<div class="alert alert-success">' . $_SESSION['success'] . '</div>';
+            unset($_SESSION['success']);
+        }
+        if (isset($_SESSION['status']) && $_SESSION['status'] != '') {
+            echo '<div class="alert alert-danger">' . $_SESSION['status'] . '</div>';
+            unset($_SESSION['status']);
+        }
+        ?>
+
+        <h5>Add New Exam</h5>
+        <form action="<?= BASE_URL ?>manage_exams.php" method="POST" class="mb-5">
+            <div class="form-group">
+                <label for="c_id">Exam ID (e.g., EXM001):</label>
+                <input type="text" class="form-control" id="c_id" name="c_id" value="<?php echo slnum('course', 'c_id'); ?>" required readonly>
+            </div>
+            <div class="form-group">
+                <label for="c_name">Exam Name:</label>
+                <input type="text" class="form-control" id="c_name" name="c_name" required>
+            </div>
+            <div class="form-group">
+                <label for="c_category">Category:</label>
+                <input type="text" class="form-control" id="c_category" name="c_category" required>
+            </div>
+            <div class="form-group">
+                <label for="c_duration">Duration (Minutes):</label>
+                <input type="number" class="form-control" id="c_duration" name="c_duration" min="1" required>
+            </div>
+            <div class="form-group">
+                <label for="c_inst_name">Instructor/Creator Name:</label>
+                <input type="text" class="form-control" id="c_inst_name" name="c_inst_name" required>
+            </div>
+            <div class="form-group">
+                <label for="division_br">Division/Branch:</label>
+                <input type="text" class="form-control" id="division_br" name="division_br" required>
+            </div>
+            <div class="form-group">
+                <label for="passing_marks">Passing Marks:</label>
+                <input type="number" class="form-control" id="passing_marks" name="passing_marks" step="0.01" min="0" required>
+            </div>
+            <button type="submit" name="add_exam" class="btn btn-primary">Add Exam</button>
+        </form>
+
+        <hr>
+        <h5>Existing Exams</h5>
+        <?php if (mysqli_num_rows($exams_result) > 0) { ?>
+            <div class="table-responsive">
+                <table class="table table-bordered table-hover">
+                    <thead>
+                        <tr>
+                            <th>SL</th>
+                            <th>Exam ID</th>
+                            <th>Name</th>
+                            <th>Category</th>
+                            <th>Duration (Min)</th>
+                            <th>Instructor</th>
+                            <th>Status</th>
+                            <th>Passing Marks</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <?php $counter = 0;
+                        while ($row = mysqli_fetch_assoc($exams_result)) {
+                            $counter++; ?>
+                            <tr>
+                                <td><?= $counter; ?></td>
+                                <td><?= htmlspecialchars($row['c_id']); ?></td>
+                                <td><?= htmlspecialchars($row['c_name']); ?></td>
+                                <td><?= htmlspecialchars($row['c_category']); ?></td>
+                                <td><?= htmlspecialchars($row['c_duration']); ?></td>
+                                <td><?= htmlspecialchars($row['c_inst_name']); ?></td>
+                                <td><?= htmlspecialchars($row['c_status']); ?></td>
+                                <td><?= htmlspecialchars($row['passing_marks']); ?></td>
+                                <td>
+                                    <a href="<?= BASE_URL ?>manage_questions.php?exam_id=<?= htmlspecialchars($row['c_id']); ?>" class="btn btn-info btn-sm">Manage Questions</a>
+                                </td>
+                            </tr>
+                        <?php } ?>
+                    </tbody>
+                </table>
+            </div>
+        <?php } else { ?>
+            <div class="alert alert-info">No exams created yet.</div>
+        <?php } ?>
+    </div>
+</div>
+
+<?php include('includes/footer.php'); ?>

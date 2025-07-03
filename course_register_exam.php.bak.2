@@ -1,0 +1,156 @@
+<?php
+// course_register_exam.php
+
+include('config.php'); // This includes session_start() and $connection_db
+include('includes/header.php');
+include('function.php');
+
+// Ensure only students can access this page
+if (!isset($_SESSION['userid']) || $_SESSION['usertype'] !== 'Student') {
+    $_SESSION['status'] = "Access Denied. Please log in as a student.";
+    redirect(BASE_URL . 'index.php');
+}
+?>
+
+<div class="card-shadow mb-4">
+    <div class="card-header py-3">
+        <h6 class="m-0 font-weight-bold text-primary">Available Exams</h6>
+    </div>
+    <div class="card-body">
+        <?php
+        if (isset($_SESSION['success']) && $_SESSION['success'] != '') {
+            echo '<div class="alert alert-success" role="alert"> ' . $_SESSION['success'] . '</div>';
+            unset($_SESSION['success']);
+        }
+        if (isset($_SESSION['status']) && $_SESSION['status'] != '') {
+            echo '<div class="alert alert-danger" role="alert"> ' . $_SESSION['status'] . '</div>';
+            unset($_SESSION['status']);
+        }
+        ?>
+        <div class="table-responsive">
+            <?php
+            $userid = $_SESSION['userid'];
+
+            // Query active exams and LEFT JOIN course_enrollment to get student's status and marks
+            $query = "SELECT
+                        c.c_id,
+                        c.c_name,
+                        c.c_category,
+                        c.c_duration,
+                        c.c_inst_name,
+                        c.division_br,
+                        c.passing_marks,
+                        ce.en_status,        -- Student's enrollment status
+                        ce.mark_gain,        -- Student's marks gained
+                        ce.mark_perct        -- *** ADDED THIS FOR PERCENTAGE ***
+                      FROM course c
+                      LEFT JOIN course_enrollment ce ON c.c_id = ce.course_id AND ce.student_id = ?
+                      WHERE c.c_status = 'active' AND c.c_type = 'exam'
+                      ORDER BY c.c_name ASC";
+
+            $stmt_exams = mysqli_prepare($connection_db, $query);
+            mysqli_stmt_bind_param($stmt_exams, "i", $userid);
+            mysqli_stmt_execute($stmt_exams);
+            $query_run = mysqli_stmt_get_result($stmt_exams);
+            ?>
+            <table class="table table-bordered table-hover" id="dataTable" width="100%" cellspacing="0">
+                <thead>
+                    <tr>
+                        <th>SL</th>
+                        <th>Exam ID</th>
+                        <th>Exam Name</th>
+                        <th>Category</th>
+                        <th>Duration (Min)</th>
+                        <th>Stakeholder</th>
+                        <th>Passing Marks</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <?php
+                    if (mysqli_num_rows($query_run) > 0) {
+                        $counter = 0;
+                        while ($exam_row = mysqli_fetch_assoc($query_run)) {
+                            $counter++;
+                            $exam_id = htmlspecialchars($exam_row['c_id']);
+                            $enrollment_status = $exam_row['en_status']; // From LEFT JOIN
+                            $mark_gain = $exam_row['mark_gain'];       // From LEFT JOIN
+                            $mark_perct = $exam_row['mark_perct'];     // *** FROM LEFT JOIN ***
+
+                            // Check for ongoing/completed attempts in exam_attempts
+                            // This logic remains useful if 'en_status' in 'course_enrollment' isn't immediately updated
+                            // or if you want to distinguish 'started' from 'submitted/graded'
+                            $attempt_query = "SELECT status, score FROM exam_attempts WHERE student_id = ? AND exam_id = ? ORDER BY start_time DESC LIMIT 1";
+                            $stmt_attempt = mysqli_prepare($connection_db, $attempt_query);
+                            mysqli_stmt_bind_param($stmt_attempt, "is", $userid, $exam_id);
+                            mysqli_stmt_execute($stmt_attempt);
+                            $attempt_result = mysqli_stmt_get_result($stmt_attempt);
+                            $attempt_status = null;
+                            if ($attempt_result && mysqli_num_rows($attempt_result) > 0) {
+                                $attempt_data = mysqli_fetch_assoc($attempt_result);
+                                $attempt_status = $attempt_data['status'];
+                            }
+                            mysqli_stmt_close($stmt_attempt); // Close statement after use
+                    ?>
+                            <tr>
+                                <td><?= $counter; ?></td>
+                                <td><?= $exam_id; ?></td>
+                                <td><?= htmlspecialchars($exam_row['c_name']); ?></td>
+                                <td><?= htmlspecialchars($exam_row['c_category']); ?></td>
+                                <td><?= htmlspecialchars($exam_row['c_duration']); ?></td>
+                                <td><?= htmlspecialchars($exam_row['division_br']); ?></td>
+                                <td><?= htmlspecialchars($exam_row['passing_marks']); ?></td>
+                                <td>
+                                    <?php
+                                    // Logic to determine what button/status to show
+                                    if ($enrollment_status === null) { // Not enrolled at all
+                                    ?>
+                                        <form action="<?= BASE_URL ?>process_enrollment.php" method="post">
+                                            <input type="hidden" name="course_id" value="<?= $exam_id; ?>">
+                                            <input type="hidden" name="c_name" value="<?= htmlspecialchars($exam_row['c_name']); ?>">
+                                            <input type="hidden" name="c_inst_name" value="<?= htmlspecialchars($exam_row['c_inst_name']); ?>">
+                                            <button type="submit" name="enroll_exam" class="btn btn-primary btn-sm">Enroll Exam</button>
+                                        </form>
+                                    <?php
+                                    } elseif ($enrollment_status == 'enrolled' || $enrollment_status == 'started') {
+                                        // Enrolled but not yet submitted/graded, or started but not finished
+                                    ?>
+                                        <form action="<?= BASE_URL ?>take_exam.php" method="GET">
+                                            <input type="hidden" name="exam_id" value="<?= $exam_id; ?>">
+                                            <button type="submit" class="btn btn-success btn-sm">Take Exam</button>
+                                        </form>
+                                    <?php
+                                    } elseif ($enrollment_status == 'submitted' || $enrollment_status == 'Pass' || $enrollment_status == 'Fail') {
+                                        // Exam completed or submitted
+                                    ?>
+                                        <b>You have participated.</b>
+                                        <?php if ($mark_gain !== null) : ?>
+                                            <br>Final Score: <strong><?= htmlspecialchars($mark_gain); ?></strong>
+                                        <?php endif; ?>
+                                        <?php if ($mark_perct !== null) : ?>
+                                            <br>Percentage: <strong><?= htmlspecialchars(round($mark_perct, 2)); ?>%</strong>
+                                        <?php endif; ?>
+                                        <?php if ($enrollment_status == 'Pass' || $enrollment_status == 'Fail') : ?>
+                                            (Status: <strong><?= htmlspecialchars($enrollment_status); ?></strong>)
+                                        <?php endif; ?>
+
+                                    <?php
+                                    } else {
+                                        echo "Status: " . htmlspecialchars($enrollment_status);
+                                    }
+                                    ?>
+                                </td>
+                            </tr>
+                    <?php
+                        }
+                    } else {
+                        echo "<tr><td colspan='8'><div class='alert alert-info'>No active exams available right now.</div></td></tr>";
+                    }
+                    ?>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<?php include('includes/footer.php'); ?>

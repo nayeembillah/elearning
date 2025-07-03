@@ -1,0 +1,29 @@
+<?php
+// config.php
+session_start(); // Start session at the very beginning of the script
+
+$host = "localhost"; // Your database host
+$username = "root"; // Your database username
+$password = "Fsibl@100"; // Your database password
+$dbname = "elearning"; // Your database name
+
+// Create database connection
+$connection_db = mysqli_connect($host, $username, $password, $dbname);
+
+// Check connection
+if (!$connection_db) {
+    die("Connection failed: " . mysqli_connect_error());
+}
+// Set character set for proper UTF-8 handling
+mysqli_set_charset($connection_db, "utf8");
+
+// You might also want to define your base URL here for redirects etc.
+// For local development, this usually works fine.
+define('BASE_URL', 'https://10.20.22.156/'); // Adjust if your folder name is different
+
+// Function to redirect (optional, but can be helpful)
+function redirect($url) {
+    header("Location: " . $url);
+    exit();
+}
+?>

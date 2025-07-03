@@ -1,0 +1,104 @@
+<?php
+// index.php - Handles user login authentication against the local database
+
+// Include config.php first: It starts the session, connects to the database, and defines BASE_URL.
+include('config.php');
+// Include function.php for other helper functions (e.g., checkUserRole, though not used directly here).
+include('function.php');
+
+// If a user is already logged in (session 'userid' is set), redirect them based on their usertype.
+if (isset($_SESSION['userid'])) {
+    if ($_SESSION['usertype'] == 'Admin') {
+        redirect(BASE_URL . 'admin_dashboard.php'); // Redirect Admin to admin dashboard
+    } else {
+        redirect(BASE_URL . 'course_register_exam.php'); // Redirect Student to exam list
+    }
+    // The redirect() function includes an exit(), so no need for a separate exit() here.
+}
+
+// Process login form submission when the request method is POST and 'login_submit' button is pressed.
+if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['login_submit'])) {
+    // Sanitize username input to prevent SQL injection
+    $username = mysqli_real_escape_string($connection_db, $_POST['username']);
+    $password = $_POST['password']; // Password is raw, will be hashed for verification
+
+    // Prepare SQL query to fetch user details by username
+    // Using prepared statements for security against SQL injection.
+    $query = "SELECT userid, username, password, usertype FROM users WHERE username = ?";
+    $stmt = mysqli_prepare($connection_db, $query);
+    mysqli_stmt_bind_param($stmt, "s", $username); // 's' for string parameter
+    mysqli_stmt_execute($stmt);
+    $result = mysqli_stmt_get_result($stmt); // Get the result set from the executed statement
+
+    // Check if exactly one user was found with that username
+    if ($result && mysqli_num_rows($result) == 1) {
+        $user = mysqli_fetch_assoc($result); // Fetch user data as an associative array
+
+        // Verify the entered password against the hashed password stored in the database.
+        // password_verify() safely handles hashing and comparison.
+        if (password_verify($password, $user['password'])) {
+            // Authentication successful: Set session variables
+            $_SESSION['userid'] = $user['userid'];
+            $_SESSION['username'] = $user['username'];
+            $_SESSION['usertype'] = $user['usertype'];
+
+            // Set a success message
+            $_SESSION['success'] = "Welcome, " . htmlspecialchars($user['username']) . "!";
+
+            // Redirect based on user type
+            if ($user['usertype'] == 'Admin') {
+                redirect(BASE_URL . 'admin_dashboard.php');
+            } else {
+                redirect(BASE_URL . 'course_register_exam.php');
+            }
+        } else {
+            // Password incorrect
+            $_SESSION['status'] = "Invalid username or password.";
+            redirect(BASE_URL . 'index.php'); // Redirect back to login page
+        }
+    } else {
+        // Username not found or multiple users with same username (shouldn't happen with UNIQUE constraint)
+        $_SESSION['status'] = "Invalid username or password.";
+        redirect(BASE_URL . 'index.php'); // Redirect back to login page
+    }
+    mysqli_stmt_close($stmt); // Close the prepared statement
+}
+
+// --- HTML structure for the login page ---
+// Include the common header HTML (which opens <html>, <head>, <body>, and main container divs).
+// This must be AFTER all PHP logic that might lead to a redirect.
+include('includes/header.php');
+?>
+
+<div class="login-container card-shadow p-4">
+    <h2 class="text-center mb-4">Login</h2>
+    <?php
+    // Display success or error messages stored in session
+    if (isset($_SESSION['status'])) {
+        echo '<div class="alert alert-danger">' . $_SESSION['status'] . '</div>';
+        unset($_SESSION['status']); // Clear the message after displaying
+    }
+    if (isset($_SESSION['success'])) {
+        echo '<div class="alert alert-success">' . $_SESSION['success'] . '</div>';
+        unset($_SESSION['success']); // Clear the message after displaying
+    }
+    ?>
+    <form action="<?= BASE_URL ?>index.php" method="POST">
+        <div class="form-group">
+            <label for="username">Username:</label>
+            <input type="text" class="form-control" id="username" name="username" required>
+        </div>
+        <div class="form-group">
+            <label for="password">Password:</label>
+            <input type="password" class="form-control" id="password" name="password" required>
+        </div>
+        <button type="submit" name="login_submit" class="btn btn-primary btn-block">Login</button>
+    </form>
+    <hr>
+    <p class="text-center mt-3">Don't have an account? <a href="<?= BASE_URL ?>register.php">Register here</a></p>
+</div>
+
+<?php
+// Include the common footer HTML (which closes main container divs, </body>, and </html>).
+include('includes/footer.php');
+?>

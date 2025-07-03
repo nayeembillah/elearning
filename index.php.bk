@@ -1,0 +1,83 @@
+<?php
+include('config.php'); // This includes session_start()
+// include('function.php'); // Not strictly needed here, but doesn't hurt
+
+if (isset($_SESSION['userid'])) {
+    // If already logged in, redirect to dashboard based on usertype
+    if ($_SESSION['usertype'] == 'Admin') {
+        redirect(BASE_URL . 'admin_dashboard.php');
+    } else {
+        redirect(BASE_URL . 'course_register_exam.php'); // Student dashboard
+    }
+    exit();
+}
+
+if ($_SERVER['REQUEST_METHOD'] == 'POST') {
+    $username = mysqli_real_escape_string($connection_db, $_POST['username']);
+    $password = $_POST['password'];
+
+    $query = "SELECT userid, username, password, usertype FROM users WHERE username = '$username'";
+    $result = mysqli_query($connection_db, $query);
+
+    if ($result && mysqli_num_rows($result) == 1) {
+        $user = mysqli_fetch_assoc($result);
+        // Verify hashed password
+        if (password_verify($password, $user['password'])) {
+            $_SESSION['userid'] = $user['userid'];
+            $_SESSION['username'] = $user['username'];
+            $_SESSION['usertype'] = $user['usertype'];
+
+            if ($user['usertype'] == 'Admin') {
+                $_SESSION['success'] = "Welcome, Admin!";
+                redirect(BASE_URL . 'admin_dashboard.php');
+            } else {
+                $_SESSION['success'] = "Welcome, " . htmlspecialchars($user['username']) . "!";
+                redirect(BASE_URL . 'course_register_exam.php');
+            }
+        } else {
+            $_SESSION['status'] = "Invalid username or password.";
+            redirect(BASE_URL . 'index.php');
+        }
+    } else {
+        $_SESSION['status'] = "Invalid username or password.";
+        redirect(BASE_URL . 'index.php');
+    }
+}
+?>
+
+<?php include('includes/header.php'); // header.php does not start session, config.php does ?>
+
+<div class="login-container card-shadow p-4">
+    <h2 class="text-center mb-4">Login</h2>
+    <?php
+    if (isset($_SESSION['status'])) {
+        echo '<div class="alert alert-danger">' . $_SESSION['status'] . '</div>';
+        unset($_SESSION['status']);
+    }
+    if (isset($_SESSION['success'])) {
+        echo '<div class="alert alert-success">' . $_SESSION['success'] . '</div>';
+        unset($_SESSION['success']);
+    }
+    ?>
+    <form action="<?= BASE_URL ?>index.php" method="POST">
+        <div class="form-group">
+            <label for="username">Username:</label>
+            <input type="text" class="form-control" id="username" name="username" required>
+        </div>
+        <div class="form-group">
+            <label for="password">Password:</label>
+            <input type="password" class="form-control" id="password" name="password" required>
+        </div>
+        <button type="submit" class="btn btn-primary btn-block">Login</button>
+    </form>
+</div>
+
+<style>
+    .login-container {
+        max-width: 400px;
+        margin: 100px auto;
+        padding: 20px;
+    }
+</style>
+
+<?php include('includes/footer.php'); ?>

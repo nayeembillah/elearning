@@ -1,0 +1,56 @@
+<?php
+// admin_dashboard.php
+
+// 1. MUST be first: Include config.php to start the session, connect to DB, and define BASE_URL.
+include('config.php');
+// 2. Include function.php for helper functions like checkUserRole and redirect.
+include('function.php');
+
+// 3. Restrict access to Admin users only. This must happen before any HTML output.
+checkUserRole('Admin');
+
+// --- No specific POST processing for this dashboard page, so we can proceed to HTML ---
+
+// 4. Now, include the common header HTML.
+include('includes/header.php');
+?>
+
+<div class="card-shadow mb-4">
+    <div class="card-header py-3">
+        <h6 class="m-0 font-weight-bold text-primary">Admin Dashboard</h6>
+    </div>
+    <div class="card-body">
+        <?php
+        // Display session messages (success/status) if any
+        if (isset($_SESSION['success']) && $_SESSION['success'] != '') {
+            echo '<div class="alert alert-success">' . $_SESSION['success'] . '</div>';
+            unset($_SESSION['success']);
+        }
+        if (isset($_SESSION['status']) && $_SESSION['status'] != '') {
+            echo '<div class="alert alert-danger">' . $_SESSION['status'] . '</div>';
+            unset($_SESSION['status']);
+        }
+        ?>
+        <p>Welcome, Admin! From here you can manage various aspects of the system:</p>
+
+        <div class="list-group">
+            <a href="<?= BASE_URL ?>manage_exams.php" class="list-group-item list-group-item-action">
+                <i class="fas fa-file-alt mr-2"></i> Manage Exams
+            </a>
+            <a href="<?= BASE_URL ?>manage_questions.php" class="list-group-item list-group-item-action">
+                <i class="fas fa-question-circle mr-2"></i> Manage Questions
+            </a>
+            <a href="<?= BASE_URL ?>manage_students.php" class="list-group-item list-group-item-action">
+                <i class="fas fa-user-graduate mr-2"></i> Manage Students
+            </a>
+            <a href="<?= BASE_URL ?>view_results.php" class="list-group-item list-group-item-action">
+                <i class="fas fa-chart-bar mr-2"></i> View All Exam Results
+            </a>
+            </div>
+    </div>
+</div>
+
+<?php
+// 5. Include the common footer HTML and closing tags.
+include('includes/footer.php');
+?>
